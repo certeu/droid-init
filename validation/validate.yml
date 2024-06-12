@@ -1,0 +1,4 @@
+validators:
+    - all
+    - -tlpv1_tag
+    - -escaped_wildcard

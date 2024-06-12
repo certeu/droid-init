@@ -1,0 +1,144 @@
+# This is a TOML document config
+
+title = "droid configuration file"
+
+[base]
+
+raw_rules_directory = "rules/raw"
+
+sigma_validation_config = "validation/validate.yml"
+
+[platforms]
+
+    [platforms.azure]
+
+    ## For searches
+
+    days_ago = 30
+    timeout = 120 # Search timeout for azure
+
+    ## For alerts
+    # general config
+    # prefix for MSSP (optional)
+    alert_prefix = "[PIZZA]"
+    # Run query every X hour
+    query_frequency = 1
+    # Lookup data from the last X hour
+    query_period = 1
+    # Alert threshold
+    threshold_operator = "GreaterThan"
+    threshold_value = 1
+    # Suppress alert status
+    suppress_status = true
+    # Suppress alert for X hours
+    suppress_period = 2
+    # Incident settings
+    incident_status = true
+    grouping_status = true
+    # Limit the group to alerts created within X hours
+    grouping_period = 5
+    # Reopen close incident status
+    grouping_reopen = false
+    # Grouping matching method: "AllEntities or AnyAlert"
+    grouping_method = "AllEntities"
+
+    ## Authentication
+    # here: "default" or "app" / See the documentation
+
+    search_auth = "default"
+    export_auth = "default"
+
+    workspace_name = "Sentinel-Pizza-Planet" # base workspace name
+    # List all Sentinel workspace where you have access on
+    graph_query = 'resources | where name contains "SecurityInsights" | extend workspaceId = tostring(properties.workspaceResourceId) | project name, workspaceId'
+    # Required to set alerts
+    subscription_id = 'dda8c596-bc5b-4108-a2c7-ae842355cfc7' # Required to set the alert
+    resource_group = 'pizza_planet_resource_group'
+
+        [platforms.azure.pipelines]
+
+        windows_process_creation = ["windows-audit", "azure_windows", "windows-logsources"]
+
+    [platforms.microsoft_defender]
+
+    ## For searches
+
+    days_ago = 30
+    timeout = 120 # Search timeout for azure
+
+    ## Authentication
+    # See the documentation
+
+    search_auth = "default"
+    export_auth = "default"
+
+        [platforms.microsoft_defender.pipelines.windows_process_creation]
+
+        pipelines = ["pipelines/mde_process_creation.yml", "microsoft_365_defender"]
+        product = "windows"
+        category = "process_creation"
+
+    [platforms.splunk]
+
+    url = "prod.splunk.pizza-planet.local"
+    verify_cert = true
+    port = "8089"
+    app = "pizza_app_rules"
+
+    # user and password are passed in environment variable
+
+    test_earliest_time = "-24h@h"
+    test_latest_time = "now"
+    job_ttl = 86400
+    acl_update_owner = "nobody"
+    acl_update_perms_read = "group1, group2"
+
+
+    ## For alerts
+    # General config
+
+    earliest_time = "-1h@h"
+    latest_time = "now"
+    cron_schedule = "*/20 * * * *"
+
+        [platforms.splunk.pipelines.windows_process_access]
+
+        pipelines = ["pipelines/splunk_process_access.yml", "splunk_windows"]
+        product = "windows"
+        category = "process_access"
+
+        #[platforms.splunk.pipelines.windows_process_creation]
+
+        #pipelines = ["splunk_windows", "pipelines/splunk_process_creation.yml"]
+        #product = "windows"
+        #category = "process_creation"
+        #format = "data_model"
+
+        [platforms.splunk.savedsearch_parameters]
+
+        alert_type = "number of events"
+        app = "pizza_app_rules"
+        sharing = "app"
+        alert_comparator = "greater than"
+        alert_threshold = 0
+        "alert.track" = 1
+        allow_skew = "67%"
+        "alert.suppress" = 1
+        "alert.digest_mode" = 0 # Per result (per row)
+        #"alert.suppress.period" = "8h"
+        #"alert.suppress.fields" = "pizza_client,host" # Optional
+
+            # [platforms.splunk.savedsearch_parameters.suppress_fields_groups.group_name]
+            # Optional: define a suppress fields groups by logsource (.e.g. web)
+
+            #[platforms.splunk.savedsearch_parameters.suppress_fields_groups.windows_image_load]
+
+            #category = "image_load"
+            #product = "windows"
+            #"alert.suppress.fields" = "pizza_client,host,ImageLoaded"
+
+        [platforms.splunk.action]
+
+        actions = "webhook"
+        "action.webhook.param.url" = "webhook" # Place your webhook URL or replace it in your env variable
+
