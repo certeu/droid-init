@@ -1,33 +1,31 @@
-# This is a TOML document config
 
 title = "droid configuration file"
 
 [base]
 
 raw_rules_directory = "rules/raw"
-
+sigma_filters_directory = "filters/default"
 sigma_validation_config = "validation/validate.yml"
 
 [platforms]
 
-    [platforms.azure]
+    [platforms.microsoft_sentinel]
 
     ## For searches
 
     days_ago = 30
-    timeout = 120 # Search timeout for azure
+    timeout = 120 # Search timeout for microsoft_sentinel
 
     ## For alerts
     # general config
-    # prefix for MSSP (optional)
-    alert_prefix = "[PIZZA]"
+    alert_prefix = "[PIZZA] -"
     # Run query every X hour
     query_frequency = 1
     # Lookup data from the last X hour
     query_period = 1
     # Alert threshold
     threshold_operator = "GreaterThan"
-    threshold_value = 1
+    threshold_value = 0
     # Suppress alert status
     suppress_status = true
     # Suppress alert for X hours
@@ -43,40 +41,104 @@ sigma_validation_config = "validation/validate.yml"
     grouping_method = "AllEntities"
 
     ## Authentication
-    # here: "default" or "app" / See the documentation
+    # here: "default" or "app"
 
     search_auth = "default"
     export_auth = "default"
 
+    workspace_id = "c114385d-0594-494b-97e7-65d7d9734bd9" # base workspace for search
     workspace_name = "Sentinel-Pizza-Planet" # base workspace name
-    # List all Sentinel workspace where you have access on
-    graph_query = 'resources | where name contains "SecurityInsights" | extend workspaceId = tostring(properties.workspaceResourceId) | project name, workspaceId'
     # Required to set alerts
-    subscription_id = 'dda8c596-bc5b-4108-a2c7-ae842355cfc7' # Required to set the alert
-    resource_group = 'pizza_planet_resource_group'
+    subscription_id = "36c445ba-32cc-4348-9d63-3b1fe60844a1" # Required to set the alert
+    resource_group = "pizza-rg"
 
-        [platforms.azure.pipelines]
+    # Search exclude list (MSSP search)
+    # We can exclude some workspaces
+    #mssp_search_exclude_list = ["lvfz-workspace"]
 
-        windows_process_creation = ["windows-audit", "azure_windows", "windows-logsources"]
+        # Here we restrict the export of the rules to a restricted list only
 
-    [platforms.microsoft_defender]
+        [platforms.microsoft_sentinel.export_list_mssp]
+
+            [platforms.microsoft_sentinel.export_list_mssp.Zoidberg]
+
+            resource_group_name = "zoidberg-rg"
+            tenant_id = "a6414174-0261-4231-9ec0-7f6d3d630ae4"
+            workspace_name = "zoidberg-workspace"
+            subscription_id = "462677ad-9063-481d-9e5b-e38129d7b127"
+
+            customer_name = "Zoidberg"
+            customer_filters_directory = "filters/zoidberg"
+
+        [platforms.microsoft_sentinel.pipelines]
+
+            [platforms.microsoft_sentinel.pipelines.windows_security]
+
+            pipelines = ["pipelines/sentinel_windows_security.yml"]
+            product = "windows"
+            service = "security"
+
+            [platforms.microsoft_sentinel.pipelines.azure_signinlogs]
+
+            pipelines = ["pipelines/sentinel_azure_signinlogs.yml"]
+            product = "azure"
+            service = "signinlogs"
+
+    [platforms.microsoft_xdr]
+
+    alert_prefix = "[PIZZA]"
+    tenant_id = "ce3e2b41-3157-4a06-a352-f082734c8bc0" # Main tenant
 
     ## For searches
 
     days_ago = 30
     timeout = 120 # Search timeout for azure
+    query_period = "0" # Near realtime
 
     ## Authentication
-    # See the documentation
 
     search_auth = "default"
     export_auth = "default"
 
-        [platforms.microsoft_defender.pipelines.windows_process_creation]
+        # Here we restrict the export of the rules to a restricted list only
 
-        pipelines = ["pipelines/mde_process_creation.yml", "microsoft_365_defender"]
-        product = "windows"
-        category = "process_creation"
+        [platforms.microsoft_xdr.export_list_mssp]
+            
+            [platforms.microsoft_xdr.export_list_mssp.Zoidberg]
+
+            tenant_id = "85f92496-f5ad-4fd5-b922-641ed8ef3c68"
+            customer_name = "Zoidberg"
+            customer_filters_directory = "filters/zoidberg"
+
+            # Add other tenants here if needed
+
+        [platforms.microsoft_xdr.pipelines]
+
+            [platforms.microsoft_xdr.pipelines.windows_process_creation]
+
+            pipelines = ["microsoft_xdr"]
+            product = "windows"
+            category = "process_creation"
+
+            [platforms.microsoft_xdr.pipelines.windows_network_connection]
+
+            pipelines = ["microsoft_xdr"]
+            product = "windows"
+            category = "network_connection"
+
+            [platforms.microsoft_xdr.pipelines.windows_process_access]
+
+            pipelines = ["microsoft_xdr"]
+            product = "windows"
+            category = "process_access"
+
+        [platforms.microsoft_xdr.rule_parameters.query_period_groups]
+
+            [platforms.microsoft_xdr.rule_parameters.query_period_groups.windows_process_access]
+
+            category = "process_access"
+            product = "windows"
+            "query_period" = "1h"
 
     [platforms.splunk]
 
@@ -85,7 +147,7 @@ sigma_validation_config = "validation/validate.yml"
     port = "8089"
     app = "pizza_app_rules"
 
-    # user and password are passed in environment variable
+    # user and password are passed in environment variable - see the docs
 
     test_earliest_time = "-24h@h"
     test_latest_time = "now"
@@ -125,20 +187,25 @@ sigma_validation_config = "validation/validate.yml"
         allow_skew = "67%"
         "alert.suppress" = 1
         "alert.digest_mode" = 0 # Per result (per row)
-        #"alert.suppress.period" = "8h"
-        #"alert.suppress.fields" = "pizza_client,host" # Optional
+        "alert.suppress.period" = "8h"
+        "alert.suppress.fields" = "client_name,hostname"
 
             # [platforms.splunk.savedsearch_parameters.suppress_fields_groups.group_name]
             # Optional: define a suppress fields groups by logsource (.e.g. web)
 
-            #[platforms.splunk.savedsearch_parameters.suppress_fields_groups.windows_image_load]
+            [platforms.splunk.savedsearch_parameters.suppress_fields_groups.windows_driver_load]
 
-            #category = "image_load"
-            #product = "windows"
-            #"alert.suppress.fields" = "pizza_client,host,ImageLoaded"
+            category = "driver_load"
+            product = "windows"
+            "alert.suppress.fields" = "client_name,hostname,ImageLoaded"
+
+            [platforms.splunk.savedsearch_parameters.suppress_fields_groups.windows_image_load]
+
+            category = "image_load"
+            product = "windows"
+            "alert.suppress.fields" = "client_name,hostname,ImageLoaded"
 
         [platforms.splunk.action]
 
         actions = "webhook"
-        "action.webhook.param.url" = "webhook" # Place your webhook URL or replace it in your env variable
-
+        "action.webhook.param.url" = "webhook"
